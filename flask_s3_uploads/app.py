@@ -24,9 +24,12 @@ def sign_s3():
   S3_BUCKET = os.environ.get('S3_BUCKET')
   S3_KEY = os.environ.get("S3_KEY")
   S3_SECRET = os.environ.get("S3_SECRET_ACCESS_KEY")
-  # print("************KEY AND SECRET***********")
+  DynamoDBTable = os.environ.get("DynamoDBTable")
+  print("************KEY AND SECRET***********")
+  # print(S3_BUCKET)
   # print(S3_KEY)
   # print(S3_SECRET)
+  print(DynamoDBTable)
 
   file_name = request.args.get('file-name')
   file_type = request.args.get('file-type')
@@ -43,12 +46,11 @@ def sign_s3():
        # region_name = '',
        config=Config(signature_version='s3v4')
     )
-   dynamodb = boto3.resource('dynamodb',
-        aws_access_key_id=S3_KEY,
-        aws_secret_access_key=S3_SECRET,
-        region_name = 'us-east-1',
-        config=Config(signature_version='s3v4')
-        )
+  # dynamodb = boto3.resource('dynamodb',
+  #      aws_access_key_id=S3_KEY,
+  #      aws_secret_access_key=S3_SECRET,
+  #      region_name = 'us-east-1')
+  #      # config=Config(signature_version='s3v4')
 
 
 
@@ -64,11 +66,11 @@ def sign_s3():
 
     
     ExpiresIn = 3600
-  )
+    )
   
-   table = dynamodb.Table('s3image')
+  table = dynamodb.Table(DynamoDBTable)
 
-   table.put_item(Item={'url':'https://%s.s3.amazonaws.com/%s' % (S3_BUCKET, file_name)})
+  # table.put_item(Item={'ImageUrl':'https://%s.s3.amazonaws.com/%s' % (S3_BUCKET, file_name)})
 
 
   # Return the data to the client
