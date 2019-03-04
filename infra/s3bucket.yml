@@ -1,0 +1,72 @@
+
+AWSTemplateFormatVersion: 2010-09-09
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket 
+    Properties:
+      BucketName: imagebucket431602
+      AccessControl: Private
+      CorsConfiguration:
+        CorsRules:
+        - AllowedHeaders: ['*']
+          AllowedMethods: 
+            - GET
+            - PUT
+            - POST
+            - HEAD
+          AllowedOrigins: ['*']
+          Id: myCORSRuleId1
+          MaxAge: '3000'
+        
+
+
+  BucketUser:
+    Type: AWS::IAM::User
+    
+    
+
+      
+
+
+  BucketPolicy:
+    Type: AWS::IAM::Policy
+    Properties:  
+      PolicyName: inthebucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - s3:GetObject
+          - s3:PutObject
+          - s3:PutBucketCORS
+          - s3:PutObjectAcl
+          Resource: !Sub arn:aws:s3:::${S3Bucket}/*
+      Users:
+        - !Ref BucketUser
+          
+
+
+  BucketKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName:
+        !Ref BucketUser
+
+
+
+
+
+Outputs:
+  S3Bucket:
+    Value: !Ref 'S3Bucket'
+    Export:
+      Name: S3Bucket
+  BucketKey:
+    Value: !Ref BucketKey
+    Export:
+      Name: BucketKey
+  SecretAccessKey:
+    Value: !GetAtt BucketKey.SecretAccessKey
+    Export:
+      Name: SecretAccessKey

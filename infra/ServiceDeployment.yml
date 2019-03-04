@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+  DesiredCount:
+    Type: Number
+    Default: 1 
+  TargetGroup:
+    Type: String
+  LBSecurityGroup:
+    Type: String
+  S3Bucket:
+    Type: String
+  BucketKey:
+    Type: String
+  SecretAccessKey:
+    Type: String
+
+
+
+
+Resources:
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref AWS::StackName
+  
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${AWS::StackName}
+
+  FargateService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref Cluster
+      DesiredCount: !Ref DesiredCount
+      TaskDefinition: !Ref TaskDefinition
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref LBSecurityGroup
+          Subnets: !Ref Subnets
+      LoadBalancers:
+        - ContainerName: flaskapp
+          ContainerPort: 5000
+          TargetGroupArn: !Ref TargetGroup
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: flaskapp
+      RequiresCompatibilities:
+        - "EC2"
+        - "FARGATE"
+      Memory: '512'
+      Cpu: '256'
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !Ref TaskExecutionRole
+      ContainerDefinitions:
+        - Name: flaskapp
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/flaskapp:latest  
+          Essential: true
+          Memory: 300
+          MountPoints: []
+          PortMappings:
+          - ContainerPort: 5000
+          Environment:
+          - Name: S3_BUCKET
+            Value: !Ref S3Bucket
+          - Name: S3_KEY
+            Value: !Ref BucketKey
+          - Name: S3_SECRET_ACCESS_KEY
+            Value: !Ref SecretAccessKey
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref LogGroup
+              awslogs-stream-prefix: !Ref AWS::StackName
+        
+      Volumes: []
+
+
+Outputs:
+  Service:
+    Value: !Ref FargateService
+    Export:
+      Name: Service
+  Cluster:
+    Value: !Ref Cluster
+    Export:
+      Name: Cluster 
+  
+
+    
