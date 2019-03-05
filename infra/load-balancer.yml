@@ -54,7 +54,7 @@ Resources:
       Port: 5000
       Protocol: HTTP
       Matcher:
-        HttpCode: 200-310
+        HttpCode: 200-399
       HealthCheckIntervalSeconds: 10
       HealthCheckPath: /account
       HealthCheckProtocol: HTTP
