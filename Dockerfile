@@ -13,6 +13,8 @@ COPY /flask_s3_uploads /app
 
 RUN pip3 --no-cache-dir install -r requirements.txt
 
+RUN apk add --no-cache curl
+
 ENV FLASK_APP app.py
 
 
