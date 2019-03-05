@@ -82,6 +82,8 @@ Resources:
           MountPoints: []
           PortMappings:
           - ContainerPort: 5000
+          HealthCheck:
+            Command: ["CMD-SHELL", "curl -f http://0.0.0.0:5000/account/ || exit 1"]
           Environment:
           - Name: S3_BUCKET
             Value: !Ref S3Bucket
