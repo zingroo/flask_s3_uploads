@@ -1,24 +1,36 @@
-from alpine:latest
+FROM python:3.11-alpine
 
-RUN apk add --no-cache python3-dev \
-	&&pip3 install --upgrade pip
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-RUN python3 -m venv venv
-RUN chown 777 venv/bin/activate
-RUN . venv/bin/activate
-
+# Set work directory
 WORKDIR /app
 
-COPY /flask_s3_uploads /app
+# Install build dependencies
+RUN apk add --no-cache gcc musl-dev libffi-dev
 
-RUN pip3 --no-cache-dir install -r requirements.txt
+# Copy requirements first for better caching
+COPY flask_s3_uploads/requirements.txt .
 
-RUN apk add --no-cache curl
+# Install dependencies
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-ENV FLASK_APP app.py
+# Copy project files
+COPY flask_s3_uploads/ .
 
+# (Optional) Create a non-root user and switch to it
+RUN adduser -D myuser
+USER myuser
 
+# Expose port
 EXPOSE 5000
 
-CMD [ "flask", "run", "--host=0.0.0.0"] 
+# Set environment variables for Flask
+ENV FLASK_APP=app.py
+ENV FLASK_RUN_HOST=0.0.0.0
+
+# Run the application
+CMD ["flask", "run"] 
 

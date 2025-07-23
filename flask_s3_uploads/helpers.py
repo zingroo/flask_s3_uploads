@@ -1,13 +1,13 @@
-import boto3, botocore
-from config import *
-import json
-from flask_cors import CORS , cross_origin
+import boto3
+from config import Config
 
-s3 = boto3.client(
-	   's3',
-	   aws_access_key_id=S3_KEY,
-	   aws_secret_access_key=S3_SECRET
-	   )
+def get_s3_client():
+    """Return a boto3 S3 client using credentials from config."""
+    return boto3.client(
+        's3',
+        aws_access_key_id=Config.S3_KEY,
+        aws_secret_access_key=Config.S3_SECRET
+    )
 
 
 

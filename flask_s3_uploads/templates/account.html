@@ -1,99 +1,71 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-	 <h1>The New Image uploader</h1>
-	<link rel="stylesheet" type ="text/css" href= "{{url_for('static',filename='css/styles.css')}}">
-	<style> 
-input[type="file"], input[type=submit], input[type=reset] {
-  background-color: #431602;
-  color: #FFF;
-  border: none;
-  padding: 10px 15px;
-  font-size: 15px;
-  border-radius: 4px;
-  cursor: pointer;
-  outline: none;
-  box-shadow: 2px 2px 0 #411035;
-  margin-bottom: 10px;
-  margin-left: 18px;
-  transition: opacity .4s ease-out, transform .4s ease-out, visibility .4s ease-out;
-  position: relative;
-  top: -10px;
-}
-</style>
+    <meta charset="UTF-8">
+    <title>The New Image Uploader</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-<html>
-   <body>
-      <form action = "/account/" method = "POST" enctype = "multipart/form-data">
+    <main>
+        <h1>The New Image Uploader</h1>
+        <form id="upload-form" action="/account/" method="POST" enctype="multipart/form-data">
+            <label for="file-input">Upload Your File</label><br>
+            <input type="file" name="user_file" id="file-input" aria-label="Choose file to upload"><br>
+            <button type="reset" id="resetBtn">Reset</button>
+        </form>
+    </main>
+    <script type="text/javascript">
+        function initUpload() {
+            const files = document.getElementById('file-input').files;
+            const file = files[0];
+            if (!file) {
+                alert('No file selected.');
+                return;
+            }
+            getSignedRequest(file);
+        }
 
-      	<label for="user_file">Upload Your File</label>
-        <br></br>
-        <input type="file" name="user_file" id="file-input">
-        <br></br>
-        <button type="submit" id="submitBtn" value="REFRESH">Reset</button>
-        <!-- <script src="js/main.js"></script> -->
-        <script type="text/javascript">
-        	function initUpload(){
-		      const files = document.getElementById('file-input').files;
-		      const file = files[0];
-		      if(!file){
-		        return alert('No file selected.');
-		      }
-		      getSignedRequest(file);
-		    }
+        function getSignedRequest(file) {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', `/sign-s3?file-name=${encodeURIComponent(file.name)}&file-type=${encodeURIComponent(file.type)}`);
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.responseText);
+                        uploadFile(file, response.data, response.url);
+                    } else {
+                        alert('Could not get signed URL.');
+                    }
+                }
+            };
+            xhr.send();
+        }
 
-		    function getSignedRequest(file){
-		      const xhr = new XMLHttpRequest();
-		      xhr.open('GET', `/sign-s3?file-name=${file.name}&file-type=${file.type}`);
-		      xhr.onreadystatechange = () => {
-		        if(xhr.readyState === 4){
-		          if(xhr.status === 200){
-		            const response = JSON.parse(xhr.responseText);
-		            
-		            uploadFile(file, response.data, response.url);
-		          }
-		          else{
-		            alert('Could not get signed URL.');
-		          }
-		        }
-		      };
-		      xhr.send();
-		    }
+        function uploadFile(file, s3Data, url) {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', s3Data.url);
+            xhr.setRequestHeader('x-amz-acl', 'public-read');
+            const postData = new FormData();
+            for (const key in s3Data.fields) {
+                postData.append(key, s3Data.fields[key]);
+            }
+            postData.append('file', file);
+            xhr.onreadystatechange = () => {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200 || xhr.status === 204) {
+                        alert("Upload successful!");
+                    } else {
+                        alert('Could not upload file.');
+                    }
+                }
+            };
+            xhr.send(postData);
+        }
 
-		    function uploadFile(file, s3Data, url){
-		      const xhr = new XMLHttpRequest();
-		      xhr.open('POST', s3Data.url);
-		      xhr.setRequestHeader('x-amz-acl', 'public-read');
-		      // xhr.setRequestHeader('x-amz-algorithm', 'AWS4-HMAC-SHA256');
-		      const postData = new FormData();
-		      for(key in s3Data.fields){
-		        postData.append(key, s3Data.fields[key]);
-		      }
-		      postData.append('file', file);
-		      xhr.onreadystatechange = () => {
-		        if(xhr.readyState === 4){
-		          if(xhr.status === 200 || xhr.status === 204){
-		            console.info("upload successful")
-		          }
-		          else{
-		            alert('Could not upload file.');
-		          }
-		        }
-		      };
-		      xhr.send(postData);
-		    }
-
-        	document.addEventListener("DOMContentLoaded", function(event) { 
-  				document.getElementById('file-input').onchange = initUpload;
-  				
-
-			});
-    	
-        </script>
- 
-      </form>
-   </body>
-</html>
+        document.addEventListener("DOMContentLoaded", function () {
+            document.getElementById('file-input').onchange = initUpload;
+        });
+    </script>
 </body>
 </html>
