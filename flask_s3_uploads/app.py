@@ -1,90 +1,52 @@
-from flask import Flask, render_template, request, redirect, url_for
-from werkzeug.utils import secure_filename
-from flask_assets import Environment, Bundle
-import os, json, boto3, botocore
+from flask import Flask, render_template, request, jsonify
+import os, boto3
 from botocore.client import Config
-from config import *
-from helpers import *
 
 app = Flask(__name__)
 
-
-# Listen for GET requests to yourdomain.com/account/
-@app.route("/account/", methods = ['GET' , 'POST'])
+@app.route("/account/", methods=['GET', 'POST'])
 def account():
-  # Show the account-edit HTML page:
-  return render_template('account.html')
+    return render_template('account.html')
 
-
-
-@app.route('/sign-s3/', methods = ['GET' , 'POST'])
+@app.route('/sign-s3/', methods=['GET', 'POST'])
 def sign_s3():
+    s3_bucket = os.environ.get('S3_BUCKET')
+    s3_key = os.environ.get('S3_KEY')
+    s3_secret = os.environ.get('S3_SECRET_ACCESS_KEY')
+    file_name = request.args.get('file-name')
+    file_type = request.args.get('file-type')
 
-  # Load necessary information into the application
-  S3_BUCKET = os.environ.get('S3_BUCKET')
-  S3_KEY = os.environ.get("S3_KEY")
-  S3_SECRET = os.environ.get("S3_SECRET_ACCESS_KEY")
-  # DynamoDBTable = os.environ.get("DynamoDBTable")
-  # print("************KEY AND SECRET***********")
-  # print(S3_BUCKET)
-  # print(S3_KEY)
-  # print(S3_SECRET)
-  # print(DynamoDBTable)
+    # Input validation
+    if not file_name or not file_type:
+        return jsonify({'error': 'Missing file-name or file-type parameter.'}), 400
+    if '/' in file_name or '\\' in file_name:
+        return jsonify({'error': 'Invalid file name.'}), 400
 
-  file_name = request.args.get('file-name')
-  file_type = request.args.get('file-type')
+    try:
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=s3_key,
+            aws_secret_access_key=s3_secret,
+            config=Config(signature_version='s3v4')
+        )
 
-  
-  
-  
+        presigned_post = s3.generate_presigned_post(
+            Bucket=s3_bucket,
+            Key=file_name,
+            Fields={"acl": "public-read", "Content-Type": file_type},
+            Conditions=[
+                {"acl": "public-read"},
+                {"Content-Type": file_type}
+            ],
+            ExpiresIn=3600
+        )
 
-  # Initialise the S3 client
+        return jsonify({
+            'data': presigned_post,
+            'url': f'https://{s3_bucket}.s3.amazonaws.com/{file_name}',
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-  s3 = boto3.client('s3',
-       aws_access_key_id=S3_KEY,
-       aws_secret_access_key=S3_SECRET,
-       # region_name = '',
-       config=Config(signature_version='s3v4')
-    )
-  # dynamodb = boto3.resource('dynamodb',
-  #      aws_access_key_id=S3_KEY,
-  #      aws_secret_access_key=S3_SECRET,
-  #      region_name = 'us-east-1')
-  #      # config=Config(signature_version='s3v4')
-
-
-
-
-  # Generate and return the presigned URL
-  presigned_post = s3.generate_presigned_post( Bucket = S3_BUCKET,
-    Key = file_name,
-    Fields = {"acl": "public-read", "Content-Type": file_type},
-    Conditions = [
-       {"acl": "public-read"},
-        {"Content-Type": file_type}
-     ],
-
-    
-    ExpiresIn = 3600
-    )
-  
-  # table = dynamodb.Table(DynamoDBTable)
-
-  # table.put_item(Item={'ImageUrl':'https://%s.s3.amazonaws.com/%s' % (S3_BUCKET, file_name)})
-
-
-  # Return the data to the client
-  return json.dumps({
-    'data': presigned_post,
-    'url': 'https://%s.s3.amazonaws.com/%s' % (S3_BUCKET, file_name),
-    
-  })
-
-
-
-
-
-# Main code
 if __name__ == '__main__':
-  app.run(debug=True,host='0.0.0.0')
-  port = int(os.environ.get('PORT', 5000))
+    app.run(debug=True, host='0.0.0.0')
